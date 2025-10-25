@@ -107,7 +107,6 @@ final class CardController extends AbstractController
                         file_put_contents($previewPath, $previewImage);
 
                         $card->setRenderedImage($previewFilename);
-                        $card->setLastRender(time());
                     } catch (\Exception $e) {
                         $this->addFlash('warning', 'Erreur lors de la sauvegarde de la preview');
                     }
@@ -376,7 +375,6 @@ final class CardController extends AbstractController
                         file_put_contents($previewPath, $previewImage);
 
                         $cardBack->setRenderedImage($previewFilename);
-                        $cardBack->setLastRender(time());
                     } catch (\Exception $e) {
                         $this->addFlash('warning', 'Erreur lors de la sauvegarde de la preview');
                     }
