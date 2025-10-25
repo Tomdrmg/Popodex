@@ -107,6 +107,7 @@ final class CardController extends AbstractController
                         file_put_contents($previewPath, $previewImage);
 
                         $card->setRenderedImage($previewFilename);
+                        $card->setLastRender(time());
                     } catch (\Exception $e) {
                         $this->addFlash('warning', 'Erreur lors de la sauvegarde de la preview');
                     }
@@ -196,30 +197,30 @@ final class CardController extends AbstractController
     }
 
     #[Route('/card/{id}/image', name: 'app_card_image')]
-    public function getCardImage(Card $card): Response
+    public function getCardImage(Card $card, Request $request): Response
     {
         $filename = $card->getImage();
         $filePath = $this->getParameter('card_directory').'/'.$filename;
 
-        return $this->returnImage($filename, $filePath);
+        return $this->returnImage($filename, $filePath, $request);
     }
 
     #[Route('/card/{id}/background', name: 'app_card_background')]
-    public function getCardBackground(Card $card): Response
+    public function getCardBackground(Card $card, Request $request): Response
     {
         $filename = $card->getBackgroundImage();
         $filePath = $this->getParameter('card_directory').'/'.$filename;
 
-        return $this->returnImage($filename, $filePath);
+        return $this->returnImage($filename, $filePath, $request);
     }
 
     #[Route('/card/{id}/render', name: 'app_card_render')]
-    public function getCardRender(Card $card): Response
+    public function getCardRender(Card $card, Request $request): Response
     {
         $filename = $card->getRenderedImage();
         $filePath = $this->getParameter('card_directory').'/'.$filename;
 
-        return $this->returnImage($filename, $filePath);
+        return $this->returnImage($filename, $filePath, $request);
     }
 
     #[Route('/card/{id}/delete', name: 'app_card_delete')]
@@ -375,6 +376,7 @@ final class CardController extends AbstractController
                         file_put_contents($previewPath, $previewImage);
 
                         $cardBack->setRenderedImage($previewFilename);
+                        $cardBack->setLastRender(time());
                     } catch (\Exception $e) {
                         $this->addFlash('warning', 'Erreur lors de la sauvegarde de la preview');
                     }
@@ -425,21 +427,21 @@ final class CardController extends AbstractController
     }
 
     #[Route('/card/back/{id}/background', name: 'app_back_background')]
-    public function getBackBackground(CardBack $cardBack): Response
+    public function getBackBackground(CardBack $cardBack, Request $request): Response
     {
         $filename = $cardBack->getBackgroundImage();
         $filePath = $this->getParameter('back_card_directory').'/'.$filename;
 
-        return $this->returnImage($filename, $filePath);
+        return $this->returnImage($filename, $filePath, $request);
     }
 
     #[Route('/card/back/{id}/render', name: 'app_back_render')]
-    public function getBackRender(CardBack $cardBack): Response
+    public function getBackRender(CardBack $cardBack, Request $request): Response
     {
         $filename = $cardBack->getRenderedImage();
         $filePath = $this->getParameter('back_card_directory').'/'.$filename;
 
-        return $this->returnImage($filename, $filePath);
+        return $this->returnImage($filename, $filePath, $request);
     }
 
     #[Route('/card/back/{id}/delete', name: 'app_back_delete')]
@@ -462,27 +464,44 @@ final class CardController extends AbstractController
         return $this->redirectToRoute('app_backs');
     }
 
-    public function returnImage(string $filename, string $filePath): Response
+    public function returnImage(string $filename, string $filePath, Request $request): Response
     {
         if (!$filename || !file_exists($filePath)) {
             throw $this->createNotFoundException('Image non trouvée');
         }
 
-        $response = new StreamedResponse(function() use ($filePath) {
+        // Vérification rapide si le fichier n'a pas changé
+        $lastModified = \DateTime::createFromFormat('U', (string) filemtime($filePath));
+        $etag = md5_file($filePath);
+
+        // Créer une réponse pour la vérification
+        $response = new Response();
+        $response->setEtag($etag);
+        $response->setLastModified($lastModified);
+        $response->setPrivate();
+        $response->setMaxAge(30 * 24 * 60 * 60);
+        $response->headers->addCacheControlDirective('must-revalidate');
+
+        // Si pas modifié, retourner 304 immédiatement
+        if ($response->isNotModified($request)) {
+            return $response;
+        }
+
+        // Seulement si modifié, streamer le fichier
+        $streamResponse = new StreamedResponse(function() use ($filePath) {
             $outputStream = fopen('php://output', 'wb');
             $fileStream = fopen($filePath, 'rb');
-
             stream_copy_to_stream($fileStream, $outputStream);
-
             fclose($fileStream);
             fclose($outputStream);
         });
 
-        $mimeType = mime_content_type($filePath);
-        $response->headers->set('Content-Type', $mimeType);
-        $response->headers->set('Content-Disposition', 'inline; filename="'.$filename.'"');
-        $response->headers->set('Cache-Control', 'private, max-age=0');
+        // Copier les headers de cache vers la réponse streamée
+        $streamResponse->headers->add($response->headers->all());
+        $streamResponse->headers->set('Content-Type', mime_content_type($filePath));
+        $streamResponse->headers->set('Content-Disposition', 'inline; filename="'.$filename.'"');
+        $streamResponse->headers->set('Content-Length', (string) filesize($filePath));
 
-        return $response;
+        return $streamResponse;
     }
 }
