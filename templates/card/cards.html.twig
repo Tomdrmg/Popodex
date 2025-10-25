@@ -13,7 +13,7 @@
                 <hr class="text-text-100 grow"/>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
-                {% for card in series.cards %}
+                {% for card in series.cards|sort((a, b) => b.date <=> a.date) %}
                     <div class="w-full max-w-xs group">
                         <a href="{{ path('app_card_edit', {'id': card.id}) }}" class="block relative rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
                             <img src="{{ path('app_card_render', {'id': card.id}) }}"
