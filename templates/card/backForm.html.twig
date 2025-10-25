@@ -1,0 +1,164 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Édition de Dos de Carte{% endblock %}
+
+{% block main_class %}items-center p-4 pt-[88px] justify-center{% endblock %}
+
+{% block main %}
+    <div class="container max-w-5xl px-4 py-8">
+        <div class="rounded-xl bg-foreground-500 mx-auto">
+            <div class="p-8 gap-4 flex flex-col md:flex-row">
+                <div class="w-full">
+                    {{ form_start(form, {'attr': {'class': 'space-y-6', 'id': form.vars.id}}) }}
+
+                    <div>
+                        {{ form_label(form.title) }}
+                        {{ form_widget(form.title, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.title) }}
+                    </div>
+
+                    <twig:FileInput acceptedTypes="PNG, JPG, WEBP jusqu'à 5MB" formElement="{{ form.backgroundImageFile }}" existingImageUrl="{{ existingImageUrl }}"/>
+                    {# Champ caché pour la preview #}
+                    {{ form_widget(form.previewImage) }}
+
+                    <div>
+                        {{ form_label(form.borderOpacity) }}
+                        {{ form_widget(form.borderOpacity, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.borderOpacity) }}
+                    </div>
+
+                    <div>
+                        {{ form_label(form.borderWidth) }}
+                        {{ form_widget(form.borderWidth, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.borderWidth) }}
+                    </div>
+
+                    <div>
+                        {{ form_label(form.fontSize) }}
+                        {{ form_widget(form.fontSize, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.fontSize) }}
+                    </div>
+
+                    <div>
+                        {{ form_label(form.outlineWidth) }}
+                        {{ form_widget(form.outlineWidth, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.outlineWidth) }}
+                    </div>
+
+                    <div>
+                        {{ form_label(form.textPosition) }}
+                        {{ form_widget(form.textPosition, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.textPosition) }}
+                    </div>
+
+                    <div>
+                        {{ form_label(form.curvature) }}
+                        {{ form_widget(form.curvature, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.curvature) }}
+                    </div>
+
+                    <button type="submit">
+                        {% if isNew %}
+                            Créer
+                        {% else %}
+                            Modifier
+                        {% endif %}
+                    </button>
+
+                    {% if not isNew %}
+                        <div class="mt-4">
+                            <a href="{{ path('app_back_delete', {'id': cardBack.id}) }}" class="alert btn">
+                                Supprimer
+                            </a>
+                        </div>
+                    {% endif %}
+                    {{ form_end(form) }}
+                </div>
+                <div class="w-full max-w-[476px] mx-auto sticky top-4 self-start">
+                    <canvas id="cardCanvas" class="w-full h-auto block" width="476" height="665"></canvas>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const canvas = document.getElementById('cardCanvas');
+                            const drawer = cardDrawer(canvas);
+
+                            const form = document.getElementById('{{ form.vars.id }}');
+
+                            const titleInput = document.getElementById('{{ form.title.vars.id }}');
+                            const bgImageInput = document.getElementById('{{ form.backgroundImageFile.vars.id }}');
+                            const borderOpacityInput = document.getElementById('{{ form.borderOpacity.vars.id }}');
+                            const borderWidthInput = document.getElementById('{{ form.borderWidth.vars.id }}');
+                            const fontSizeInput = document.getElementById('{{ form.fontSize.vars.id }}');
+                            const outlineWidthInput = document.getElementById('{{ form.outlineWidth.vars.id }}');
+                            const textPositionInput = document.getElementById('{{ form.textPosition.vars.id }}');
+                            const curvatureInput = document.getElementById('{{ form.curvature.vars.id }}');
+
+                            const previewInput = document.getElementById('{{ form.previewImage.vars.id }}');
+
+                            function updatePreview() {
+                                previewInput.value = canvas.toDataURL('image/png');
+                            }
+
+                            function update() {
+                                drawer.setTitle(titleInput.value);
+                                drawer.setBackBorderOp(parseInt(borderOpacityInput.value, 10) / 100);
+                                drawer.setBackBWidth(parseInt(borderWidthInput.value, 10));
+                                drawer.setFontSize(parseInt(fontSizeInput.value, 10));
+                                drawer.setTitleOutline(parseInt(outlineWidthInput.value, 10));
+                                drawer.setTitlePos(parseInt(textPositionInput.value, 10));
+                                drawer.setCurv(parseInt(curvatureInput.value, 10));
+                                drawer.drawBackCard();
+
+                                setTimeout(updatePreview, 100);
+                            }
+
+                            function updateImage(url) {
+                                if (!url) {
+                                    drawer.setBackBgImage(null);
+                                    drawer.drawBackCard();
+                                    return;
+                                }
+
+                                const img = new Image();
+                                img.onload = () => {
+                                    drawer.setBackBgImage(img);
+                                    drawer.drawBackCard();
+                                    setTimeout(updatePreview, 100);
+                                };
+                                img.src = url;
+                            }
+
+                            update();
+
+                            const existingPreview = document.querySelector('.file-preview-image[src]');
+                            if (existingPreview && existingPreview.src) {
+                                updateImage(existingPreview.src);
+                            }
+
+
+                            bgImageInput.addEventListener('change', (e) => {
+                                const f = e.target.files && e.target.files[0];
+                                updateImage(f ? URL.createObjectURL(f) : null)
+                            });
+
+                            titleInput.addEventListener('input', update);
+                            borderOpacityInput.addEventListener('input', update);
+                            borderWidthInput.addEventListener('input', update);
+                            fontSizeInput.addEventListener('input', update);
+                            outlineWidthInput.addEventListener('input', update);
+                            textPositionInput.addEventListener('input', update);
+                            curvatureInput.addEventListener('input', update);
+
+                            form.addEventListener('submit', updatePreview);
+                        })
+                    </script>
+                </div>
+            </div>
+            <div class="px-8 py-2 bg-foreground-300/50 border-t rounded-b-xl border-foreground-300 text-center flex flex-col">
+                {% if not isNew %}
+                    <a href="{{ path('app_back_new') }}" class="text-text-300 hover:text-text-200 text-sm transition duration-500 mb-2">Créer un nouveau dos</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

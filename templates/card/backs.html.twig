@@ -1,0 +1,30 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Dos de Carte{% endblock %}
+
+{% block main_class %}items-center p-4 pt-[88px] justify-center{% endblock %}
+
+{% block main %}
+    <div class="container px-4 py-8">
+        <div class="mx-auto max-w-5xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12 justify-items-center">
+            {# Carte "Ajouter" #}
+            <a href="{{ path('app_back_new') }}" class="w-full max-w-xs transform transition-transform duration-200 hover:scale-105 hover:shadow-lg">
+                <div class="bg-foreground-300 border-2 border-dashed border-foreground-200 rounded-lg h-full aspect-[1/1.4] flex flex-col items-center justify-center cursor-pointer group hover:bg-foreground-250 transition-colors">
+                    <svg class="w-12 h-12 text-text-400 mb-3 group-hover:text-text-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    <span class="text-text-400 font-medium group-hover:text-text-300 transition-colors">
+                        Ajouter un dos de carte
+                    </span>
+                </div>
+            </a>
+
+            {# Cartes existantes #}
+            {% for back in backs %}
+                <a href="{{ path('app_back_edit', {'id': back.id}) }}" class="w-full max-w-xs transform transition-transform duration-200 hover:scale-105 hover:shadow-lg">
+                    <img src="{{ path('app_back_render', {'id': back.id}) }}" alt="Dos de carte {{ back.title }}" class="w-full h-auto object-cover cursor-pointer" loading="lazy"/>
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}

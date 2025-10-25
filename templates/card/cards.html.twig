@@ -1,0 +1,36 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Cartes{% endblock %}
+
+{% block main_class %}items-center p-4 pt-[88px]{% endblock %}
+
+{% block main %}
+    <div class="container px-4 py-8 flex flex-col mx-auto max-w-5xl gap-5">
+        {% for series in allSeries %}
+            <div class="w-full flex flex-row px-3 items-center gap-3">
+                <hr class="text-text-100 grow"/>
+                <span class="uppercase font-bold text-xs">{{ series.title }}</span>
+                <hr class="text-text-100 grow"/>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+                {% for card in series.cards %}
+                    <div class="w-full max-w-xs group">
+                        <a href="{{ path('app_card_edit', {'id': card.id}) }}" class="block relative rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
+                            <img src="{{ path('app_card_render', {'id': card.id}) }}"
+                                 alt="Carte {{ card.name }}"
+                                 class="w-full h-auto object-cover"/>
+
+                            {% if card.back %}
+                                <div class="absolute bottom-1 right-1 w-12 h-16 bg-white border border-gray-300 rounded shadow-md transform translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400">
+                                    <img src="{{ path('app_back_render', {'id': card.back.id}) }}"
+                                         alt="Dos"
+                                         class="w-full h-full object-cover rounded-sm"/>
+                                </div>
+                            {% endif %}
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

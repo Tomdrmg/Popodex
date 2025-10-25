@@ -1,0 +1,112 @@
+<header class="bg-background-700/60 absolute shadow-header h-[88px] left-0 right-0 top-0 z-10">
+    <div class="container mx-auto px-4 py-3">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="{{ path('app_cards') }}" class="flex items-center space-x-2">
+                    <img src="{{ asset("images/icon.png") }}" alt="icon" class="w-12 h-12 md:w-16 md:h-16"/>
+                    <h1 class="text-lg md:text-xl font-bold">Popodex</h1>
+                </a>
+            </div>
+
+            <nav class="flex space-x-1">
+                {% if app.user %}
+                        <div class="relative nav-item">
+                            <div class="rounded hover:bg-accent-purple-600 transition flex items-center h-10 w-16 justify-center duration-300">
+                                <i class="fa-solid fa-grip text-2xl"></i>
+                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                            <div class="nav-menu absolute right-0 pt-2 w-48 z-10 transition duration-500">
+                                <div class="bg-foreground-500 rounded-md shadow-lg py-1">
+                                    <span class="block px-4 py-2 text-center font-semibold">
+                                        Collection
+                                    </span>
+                                    <hr/>
+                                    <a href="{{ path('app_card_new') }}" class="px-4 py-2 hover:bg-accent-purple-700 flex items-center gap-2">
+                                        <i class="fa-solid fa-circle-plus aspect-square text-lg"></i>
+                                        Nouvelle carte
+                                    </a>
+                                    <a href="{{ path('app_cards') }}" class="px-4 py-2 hover:bg-accent-purple-700 flex items-center gap-2">
+                                        <i class="fa-solid fa-address-card aspect-square text-lg"></i>
+                                        Cartes
+                                    </a>
+                                    <a href="{{ path('app_backs') }}" class="px-4 py-2 hover:bg-accent-purple-700 flex items-center gap-2">
+                                        <i class="fa-solid fa-rectangle-xmark aspect-square text-lg"></i>
+                                        Dos de Cartes
+                                    </a>
+                                    <a href="{{ path('app_series') }}" class="px-4 py-2 hover:bg-accent-purple-700 flex items-center gap-2">
+                                        <i class="fa-solid fa-layer-group aspect-square text-lg"></i>
+                                        Séries
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                {% endif %}
+                <div class="relative nav-item">
+                    <div class="rounded hover:bg-accent-purple-600 transition flex items-center h-10 w-16 justify-center duration-300">
+                        <i class="fa-solid fa-user text-2xl"></i>
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <div class="nav-menu absolute right-0 pt-2 w-48 z-10 transition duration-500">
+                        <div class="bg-foreground-500 rounded-md shadow-lg py-1">
+                            {% if app.user %}
+                                <span class="block px-4 py-2 text-center font-semibold">Moi</span>
+                                <hr/>
+                                <a href="{{ path('app_logout') }}" class="px-4 py-2 hover:bg-accent-red-500 flex items-center gap-2 text-accent-red-800">
+                                    <i class="fa-solid fa-right-from-bracket aspect-square text-lg"></i>
+                                    Déconnexion
+                                </a>
+                            {% else %}
+                                <span class="block px-4 py-2 text-center font-semibold">Rejoindre</span>
+                                <hr/>
+                                <a href="{{ path('app_login') }}" class="px-4 py-2 hover:bg-accent-purple-700 flex items-center gap-2">
+                                    <i class="fa-solid fa-right-to-bracket aspect-square text-lg"></i>
+                                    Connexion
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const triggers = Array.from(document.getElementsByClassName("nav-item"));
+
+        triggers.forEach(trigger => {
+            trigger.addEventListener('click', function (e) {
+                e.stopPropagation();
+
+                triggers.forEach(t => {
+                    if (t !== trigger) {
+                        t.classList.remove("clicked")
+                    }
+                });
+
+                if (trigger.classList.contains('clicked')) {
+                    trigger.classList.remove("clicked")
+                } else {
+                    trigger.classList.add("clicked")
+                }
+            });
+
+            trigger.addEventListener('mouseover', function () {
+                triggers.forEach(t => {
+                    if (t !== trigger) {
+                        t.classList.remove("clicked")
+                    }
+                });
+            })
+        });
+
+        document.addEventListener('click', function () {
+            triggers.forEach(t => t.classList.remove("clicked"));
+        });
+    });
+</script>

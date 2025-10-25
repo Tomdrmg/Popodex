@@ -1,17 +1,827 @@
-<!DOCTYPE html>
+<!-- base.html.twig -->
+<!doctype html>
 <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
-        {% block stylesheets %}
-        {% endblock %}
+<head>
+    <title>Popodex{% if block("title") is not empty %} | {% block title %}{% endblock %}{% endif %}</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="">
+    <link rel="icon" href="{{ asset("images/icon.png") }}">
+    {% block stylesheets %}
+        {{ encore_entry_link_tags('app') }}
+    {% endblock %}
 
-        {% block javascripts %}
-            {% block importmap %}{{ importmap('app') }}{% endblock %}
+    {% block scripts %}
+        <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script>
+            function initRangeInputs() {
+                const rangeInputs = document.querySelectorAll('input[type="range"]');
+
+                rangeInputs.forEach(range => {
+                    let unit = range.dataset.unit;
+
+                    const minMaxContainer = document.createElement("div");
+                    minMaxContainer.classList.add("range-min-max");
+                    minMaxContainer.innerHTML = `
+                            <span>${range.min || 0}${unit || ''}</span>
+                            <span>${range.max || 100}${unit || ''}</span>`
+                    range.parentElement.appendChild(minMaxContainer);
+
+                    // Créer le container si il n'existe pas
+                    if (!range.parentElement.classList.contains('range-container')) {
+                        const container = document.createElement('div');
+                        container.className = 'range-container';
+                        range.parentNode.insertBefore(container, range);
+                        container.appendChild(range);
+                    }
+
+                    // Créer l'affichage de valeur
+                    const valueDisplay = document.createElement('span');
+                    valueDisplay.className = 'range-value';
+                    valueDisplay.textContent = range.value + (unit || '');
+                    range.parentElement.appendChild(valueDisplay);
+
+                    // Mettre à jour la valeur
+                    function updateValue() {
+                        valueDisplay.textContent = range.value + (unit || '');
+
+                        // Positionner l'affichage au-dessus du thumb
+                        const percent = (range.value - range.min) / (range.max - range.min);
+                        const thumbPosition = percent * 100;
+                        valueDisplay.style.left = `calc(${thumbPosition}% + (${13 - thumbPosition * 13 / 50}px))`;
+                    }
+
+                    // Événements
+                    range.addEventListener('input', updateValue);
+                    range.addEventListener('change', updateValue);
+
+                    // Initialisation
+                    updateValue();
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', initRangeInputs);
+        </script>
+        <script>
+            // Gestion des file inputs
+            function initFileInputs() {
+                const fileInputs = document.querySelectorAll('.file-input');
+
+                fileInputs.forEach(input => {
+                    const elementId = input.dataset.fileInput;
+                    const container = document.getElementById(`file-input-${elementId}`);
+                    const label = document.getElementById(`file-label-${elementId}`);
+                    const selectedArea = document.getElementById(`file-selected-${elementId}`);
+                    const fileName = document.getElementById(`file-name-${elementId}`);
+                    const preview = document.getElementById(`file-preview-${elementId}`);
+                    const previewImage = document.getElementById(`preview-image-${elementId}`);
+                    const removeBtn = container?.querySelector('[data-file-remove]');
+
+                    if (!container || !label || !selectedArea || !fileName) return;
+
+                    // Si il y a déjà une image (cas édition), on simule la sélection
+                    if (previewImage && previewImage.srcset) {
+                        // L'image est déjà affichée via Twig, on s'assure que tout est cohérent
+                        if (fileName.textContent) {
+                            selectedArea.classList.remove('hidden');
+                            if (preview) preview.classList.remove('hidden');
+                            label.classList.add('has-success');
+                        }
+                    }
+
+                    // Gestion du changement de fichier
+                    input.addEventListener('change', function(e) {
+                        const file = this.files[0];
+                        if (file) {
+                            handleFileSelection(file, elementId);
+                        }
+                    });
+
+                    // Gestion de la suppression
+                    if (removeBtn) {
+                        removeBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            removeFile(elementId);
+                        });
+                    }
+
+                    // Drag and drop
+                    setupDragAndDrop(label, elementId);
+                });
+            }
+
+            function handleFileSelection(file, elementId) {
+                const fileName = document.getElementById(`file-name-${elementId}`);
+                const selectedArea = document.getElementById(`file-selected-${elementId}`);
+                const preview = document.getElementById(`file-preview-${elementId}`);
+                const previewImage = document.getElementById(`preview-image-${elementId}`);
+                const label = document.getElementById(`file-label-${elementId}`);
+
+                if (fileName) fileName.textContent = file.name;
+                if (selectedArea) selectedArea.classList.remove('hidden');
+
+                if (label) {
+                    label.classList.remove('has-error');
+                    label.classList.add('has-success');
+                }
+
+                // Aperçu pour les images
+                if (preview && previewImage && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewImage.src = e.target.result;
+                        preview.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                } else if (preview) {
+                    preview.classList.add('hidden');
+                }
+            }
+
+            function removeFile(elementId) {
+                const input = document.querySelector(`[data-file-input="${elementId}"]`);
+                const selectedArea = document.getElementById(`file-selected-${elementId}`);
+                const preview = document.getElementById(`file-preview-${elementId}`);
+                const label = document.getElementById(`file-label-${elementId}`);
+
+                if (input) {
+                    input.value = '';
+
+                    if (input.files) {
+                        input.files = new DataTransfer().files;
+                    }
+
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+
+                if (selectedArea) selectedArea.classList.add('hidden');
+                if (preview) preview.classList.add('hidden');
+                if (label) {
+                    label.classList.remove('has-success', 'has-error');
+                }
+            }
+
+            function setupDragAndDrop(label, elementId) {
+                const preventDefaults = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                };
+
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    label.addEventListener(eventName, preventDefaults, false);
+                });
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    label.addEventListener(eventName, () => {
+                        label.classList.add('dragover');
+                    }, false);
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    label.addEventListener(eventName, () => {
+                        label.classList.remove('dragover');
+                    }, false);
+                });
+
+                label.addEventListener('drop', (e) => {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    const input = document.querySelector(`[data-file-input="${elementId}"]`);
+
+                    if (files.length > 0) {
+                        input.files = files;
+                        const event = new Event('change', { bubbles: true });
+                        input.dispatchEvent(event);
+                    }
+                }, false);
+            }
+
+            // Initialisation
+            document.addEventListener('DOMContentLoaded', initFileInputs);
+        </script>
+        <script>
+            function cardDrawer(canvas) {
+                const ctx = canvas.getContext('2d');
+                const W = canvas.width, H = canvas.height;
+                const centerX = W/2, centerY = H/2;
+                const cornerRadius = 18;
+
+                let settings = {
+                    cardName: null,
+                    cartDate: null,
+                    series: null,
+                    frontBorderOp: null,
+                    frontBWidth: null,
+                    fullArt: false,
+                    attackMargin: null,
+                    imagePosition: null,
+                    frontBgImage: null,
+                    bottomBgImage: null,
+
+                    title: null,
+                    backBorderOp: null,
+                    backBWidth: null,
+                    fontSize: null,
+                    titleOutline: null,
+                    titlePos: null,
+                    curv: null,
+                    backBgImage: null,
+
+                    attacks: []
+                }
+
+                function setCardName(cardName) {
+                    settings.cardName = cardName;
+                }
+
+                function setCardDate(cardDate) {
+                    settings.cardDate = cardDate;
+                }
+
+                function setSeries(cardSeries) {
+                    settings.cardSeries = cardSeries;
+                }
+
+                // Should be a number between 0 and 1
+                function setFrontBorderOp(borderOp) {
+                    // If it's the input's value
+                    if (typeof borderOp === 'string') {
+                        borderOp = parseInt(borderOp, 10) / 100;
+                    }
+
+                    settings.frontBorderOp = borderOp;
+                }
+
+                // Should be a number
+                function setFrontBorderWidth(borderWidth) {
+                    // If it's the input's value
+                    if (typeof borderWidth === 'string') {
+                        borderWidth = parseInt(borderWidth, 10);
+                    }
+
+                    settings.frontBWidth = borderWidth;
+                }
+
+                function setFullArt(fullArt) {
+                    settings.fullArt = fullArt;
+                }
+
+                // Should be a number
+                function setAttackMargin(attackMargin) {
+                    // If it's the input's value
+                    if (typeof attackMargin === 'string') {
+                        attackMargin = parseInt(attackMargin, 10);
+                    }
+
+                    settings.attackMargin = attackMargin;
+                }
+
+                // Should be a number between 0 and 1
+                function setImagePosition(imagePosition) {
+                    // If it's the input's value
+                    if (typeof imagePosition === 'string') {
+                        imagePosition = parseInt(imagePosition, 10) / 100;
+                    }
+
+                    settings.imagePosition = imagePosition;
+                }
+
+                function setFrontBgImage(frontBgImage) {
+                    settings.frontBgImage = frontBgImage;
+                }
+
+                function setBottomBgImage(bottomBgImage) {
+                    settings.bottomBgImage = bottomBgImage;
+                }
+
+                function setTitle(title) {
+                    settings.title = title;
+                }
+
+                // Should be a number
+                function setBackBorderOp(borderOp) {
+                    // If it's the input's value
+                    if (typeof borderOp === 'string') {
+                        borderOp = parseInt(borderOp, 10);
+                    }
+
+                    settings.backBorderOp = borderOp;
+                }
+
+                // Should be a number
+                function setBackBWidth(bWidth) {
+                    // If it's the input's value
+                    if (typeof bWidth === 'string') {
+                        bWidth = parseInt(bWidth, 10);
+                    }
+
+                    settings.backBWidth = bWidth;
+                }
+
+                // Should be a number
+                function setFontSize(fontSize) {
+                    // If it's the input's value
+                    if (typeof fontSize === 'string') {
+                        fontSize = parseInt(fontSize, 10);
+                    }
+
+                    settings.fontSize = fontSize;
+                }
+
+                // Should be a number
+                function setTitleOutline(titleOutline) {
+                    // If it's the input's value
+                    if (typeof titleOutline === 'string') {
+                        titleOutline = parseInt(titleOutline, 10);
+                    }
+
+                    settings.titleOutline = titleOutline;
+                }
+
+                // Should be a number
+                function setTitlePos(titlePos) {
+                    // If it's the input's value
+                    if (typeof titlePos === 'string') {
+                        titlePos = parseInt(titlePos, 10);
+                    }
+
+                    settings.titlePos = titlePos;
+                }
+
+                // Should be a number
+                function setCurv(curv) {
+                    // If it's the input's value
+                    if (typeof curv === 'string') {
+                        curv = parseInt(curv, 10);
+                    }
+
+                    settings.curv = curv;
+                }
+
+                function setBackBgImage(backBgImage) {
+                    settings.backBgImage = backBgImage;
+                }
+
+                function setAttacks(attacks) {
+                    settings.attacks = attacks;
+                }
+
+                /* helper rounded rect */
+                function roundedRectPath(ctx, x, y, w, h, r) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.lineTo(x + w - r, y);
+                    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                    ctx.lineTo(x + w, y + h - r);
+                    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                    ctx.lineTo(x + r, y + h);
+                    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                    ctx.lineTo(x, y + r);
+                    ctx.quadraticCurveTo(x, y, x + r, y);
+                    ctx.closePath();
+                }
+
+                /* draw straight centered text (used when curvature == 0) */
+                function drawStraightText(text, xCenter, baselineY, fontSize, outlineWidth, invert=false) {
+                    ctx.save();
+                    ctx.font = `${fontSize}px "Luckiest Guy", cursive`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'alphabetic';
+                    ctx.lineWidth = outlineWidth;
+                    ctx.strokeStyle = '#000';
+                    ctx.fillStyle = '#fff';
+                    ctx.lineJoin = 'round';
+                    ctx.miterLimit = 2;
+
+                    if (!invert) {
+                        ctx.strokeText(text, xCenter, baselineY);
+                        ctx.fillText(text, xCenter, baselineY);
+                    } else {
+                        ctx.translate(xCenter, baselineY);
+                        ctx.rotate(Math.PI);
+                        ctx.strokeText(text, 0, 0);
+                        ctx.fillText(text, 0, 0);
+                    }
+                    ctx.restore();
+                }
+
+                /* draw curved text along arc:
+                   - top: baselineY = centerY - textPosition
+                   - bottom: baselineY = centerY + textPosition
+                   curvaturePct: 0..100 where 0 => straight
+                */
+                function drawCurvedText(text, baselineY, isTop, fontSize, outlineWidth, curvaturePct) {
+                    if (!text) return;
+                    ctx.save();
+                    ctx.font = `${fontSize}px "Luckiest Guy", cursive`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'alphabetic';
+                    ctx.fillStyle = '#fff';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = outlineWidth;
+                    ctx.lineJoin = 'round';
+                    ctx.miterLimit = 2;
+
+                    const L = ctx.measureText(text).width;
+                    if (L <= 0) { ctx.restore(); return; }
+
+                    const eps = 1e-6;
+                    const R = (curvaturePct <= eps) ? Infinity : ( (L/2) * 100 / Math.max(curvaturePct, eps) );
+                    const centerY_circle = isTop ? (baselineY + R) : (baselineY - R);
+
+                    if (!isFinite(R) || curvaturePct <= eps) {
+                        ctx.restore();
+                        return false;
+                    }
+
+                    const asinArg = Math.min(1, Math.max(-1, L / (2 * R)));
+                    let theta = 2 * Math.asin(asinArg);
+                    if (!isFinite(theta) || Math.abs(theta) < 1e-6) theta = 1e-6;
+
+                    const chars = Array.from(text);
+                    const widths = chars.map(ch => ctx.measureText(ch).width);
+                    const total = widths.reduce((a,b)=>a+b, 0);
+
+                    // stocker les positions et rotations pour tous les caractères
+                    const lettersInfo = [];
+                    let acc = 0;
+                    for (let i = 0; i < chars.length; ++i) {
+                        const w = widths[i];
+                        const charCenterX_local = acc + w/2;
+                        const x_centered = charCenterX_local - total/2;
+                        acc += w;
+
+                        const centralAngle = isTop ? (-Math.PI/2) : (Math.PI/2);
+                        const angle = centralAngle + (x_centered / total) * theta;
+                        const px = centerX + R * Math.cos(angle);
+                        const py = centerY_circle + R * Math.sin(angle);
+                        const rotation = angle + Math.PI/2;
+
+                        lettersInfo.push({px, py, rotation, char: chars[i]});
+                    }
+
+                    // d'abord tracer tous les contours
+                    for (const info of lettersInfo) {
+                        ctx.save();
+                        ctx.translate(info.px, info.py);
+                        ctx.rotate(info.rotation);
+                        ctx.strokeText(info.char, 0, 0);
+                        ctx.restore();
+                    }
+
+                    // puis tracer tous les remplissages
+                    for (const info of lettersInfo) {
+                        ctx.save();
+                        ctx.translate(info.px, info.py);
+                        ctx.rotate(info.rotation);
+                        ctx.fillText(info.char, 0, 0);
+                        ctx.restore();
+                    }
+
+                    ctx.restore();
+                    return true;
+                }
+
+                /* Draw text with Pokémon style outline */
+                function drawPokemonText(text, x, y, fontSize, outlineWidth = 2, align = 'left') {
+                    ctx.save();
+                    ctx.font = `bold ${fontSize}px "Roboto Condensed", sans-serif`;
+                    ctx.textAlign = align;
+                    ctx.textBaseline = 'alphabetic';
+                    ctx.lineWidth = outlineWidth;
+                    ctx.strokeStyle = '#000';
+                    ctx.fillStyle = '#fff';
+                    ctx.lineJoin = 'round';
+                    ctx.miterLimit = 2;
+
+                    // Draw outline
+                    for (let i = -outlineWidth; i <= outlineWidth; i += outlineWidth) {
+                        for (let j = -outlineWidth; j <= outlineWidth; j += outlineWidth) {
+                            if (i !== 0 || j !== 0) {
+                                ctx.strokeText(text, x + i, y + j);
+                            }
+                        }
+                    }
+
+                    // Draw fill
+                    ctx.fillText(text, x, y);
+                    ctx.restore();
+                }
+
+                /* Draw wrapped text with proper line breaking and increased word spacing */
+                function drawWrappedText(text, x, y, maxWidth, fontSize, outlineWidth = 2) {
+                    const words = text.split(' ');
+                    let currentLine = '';
+                    let lineY = y;
+
+                    // Set font for measurement
+                    ctx.save();
+                    ctx.font = `bold ${fontSize}px "Roboto Condensed", sans-serif`;
+
+                    for (let i = 0; i < words.length; i++) {
+                        const testLine = currentLine + (currentLine ? '  ' : '') + words[i]; // Double space between words
+                        const testWidth = ctx.measureText(testLine).width;
+
+                        if (testWidth > maxWidth && currentLine !== '') {
+                            // Draw the current line and start a new one
+                            drawPokemonText(currentLine, x, lineY, fontSize, outlineWidth, 'left');
+                            lineY += fontSize * 1.4;
+                            currentLine = words[i];
+                        } else {
+                            currentLine = testLine;
+                        }
+                    }
+
+                    // Draw the last line
+                    if (currentLine) {
+                        drawPokemonText(currentLine, x, lineY, fontSize, outlineWidth, 'left');
+                        lineY += fontSize * 1.4;
+                    }
+
+                    ctx.restore();
+                    return lineY;
+                }
+
+                /* Draw front card */
+                function drawFrontCard() {
+                    // read controls
+                    const name = (settings.cardName || '');
+                    const date = (settings.cardDate || '');
+                    const series = (settings.cardSeries || '');
+                    const borderOp = (settings.frontBorderOp || 1);
+                    const bWidth = (settings.frontBWidth || 12);
+                    const isFullArt = (settings.fullArt || false);
+                    const attackMarginValue = (settings.attackMargin || 75);
+                    const imagePositionValue = (settings.imagePosition || 0.5);
+                    const frontBgImage = settings.frontBgImage;
+                    const bottomBgImage = settings.bottomBgImage;
+
+                    // clear
+                    ctx.clearRect(0,0,W,H);
+
+                    // Draw background with proper clipping to avoid corners but fill border area
+                    ctx.save();
+                    // Use the full card area including border for the image
+                    roundedRectPath(ctx, 0, 0, W, H, cornerRadius);
+                    ctx.clip();
+
+                    if (frontBgImage) {
+                        if (isFullArt) {
+                            // Full Art - image covers entire card including border area
+                            const imgW = frontBgImage.width, imgH = frontBgImage.height;
+                            const scale = Math.max(W / imgW, H / imgH);
+                            const sw = W / scale, sh = H / scale;
+                            const sx = (imgW - sw) / 2;
+                            // Calculer la position verticale en fonction du slider
+                            const sy = (imgH - sh) * imagePositionValue;
+                            ctx.drawImage(frontBgImage, sx, sy, sw, sh, 0, 0, W, H);
+                        } else {
+                            // Normal - image only in top half with position control
+                            const imgW = frontBgImage.width, imgH = frontBgImage.height;
+                            const scale = Math.max(W / imgW, (H/2) / imgH);
+                            const sw = W / scale, sh = (H/2) / scale;
+                            const sx = (imgW - sw) / 2;
+                            // Calculer la position verticale en fonction du slider
+                            const sy = (imgH - sh) * imagePositionValue;
+                            ctx.drawImage(frontBgImage, sx, sy, sw, sh, 0, 0, W, H/2);
+
+                            // Fill bottom half with bottom image or color
+                            if (bottomBgImage) {
+                                // Draw bottom background image
+                                const bottomImgW = bottomBgImage.width, bottomImgH = bottomBgImage.height;
+                                const bottomScale = Math.max(W / bottomImgW, (H/2) / bottomImgH);
+                                const bottomSw = W / bottomScale, bottomSh = (H/2) / bottomScale;
+                                const bottomSx = (bottomImgW - bottomSw) / 2;
+                                const bottomSy = (bottomImgH - bottomSh) / 2;
+                                ctx.drawImage(bottomBgImage, bottomSx, bottomSy, bottomSw, bottomSh, 0, H/2, W, H/2);
+                            } else {
+                                // Fill bottom half with color
+                                ctx.fillStyle = '#f0f0f0';
+                                ctx.fillRect(0, H/2, W, H/2);
+                            }
+                        }
+                    } else {
+                        // No main image - fill with colors or bottom image
+                        if (isFullArt) {
+                            ctx.fillStyle = '#ddd';
+                            ctx.fillRect(0, 0, W, H);
+                        } else {
+                            ctx.fillStyle = '#ddd';
+                            ctx.fillRect(0, 0, W, H/2);
+
+                            if (bottomBgImage) {
+                                // Draw bottom background image
+                                const bottomImgW = bottomBgImage.width, bottomImgH = bottomBgImage.height;
+                                const bottomScale = Math.max(W / bottomImgW, (H/2) / bottomImgH);
+                                const bottomSw = W / bottomScale, bottomSh = (H/2) / bottomScale;
+                                const bottomSx = (bottomImgW - bottomSw) / 2;
+                                const bottomSy = (bottomImgH - bottomSh) / 2;
+                                ctx.drawImage(bottomBgImage, bottomSx, bottomSy, bottomSw, bottomSh, 0, H/2, W, H/2);
+                            } else {
+                                ctx.fillStyle = '#f0f0f0';
+                                ctx.fillRect(0, H/2, W, H/2);
+                            }
+                        }
+                    }
+                    ctx.restore();
+
+                    // Draw border (with opacity)
+                    ctx.save();
+                    ctx.globalAlpha = borderOp;
+                    ctx.strokeStyle = '#151515';
+                    ctx.lineWidth = bWidth;
+                    const safeRadius = Math.max(cornerRadius - bWidth, 0);
+                    roundedRectPath(ctx, bWidth/2, bWidth/2, W - bWidth, H - bWidth, safeRadius);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Draw middle border between halves when not in Full Art
+                    if (!isFullArt) {
+                        ctx.save();
+                        ctx.globalAlpha = borderOp;
+                        ctx.strokeStyle = '#151515';
+                        ctx.lineWidth = bWidth;
+
+                        // Calculate the Y position for the middle border (at H/2)
+                        const middleY = H/2;
+
+                        // Draw the middle border line
+                        ctx.beginPath();
+                        ctx.moveTo(bWidth/2, middleY);
+                        ctx.lineTo(W - bWidth/2, middleY);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    // Draw card name at top (with Pokémon style)
+                    drawPokemonText(name, 20, 40, 28, 2, 'left');
+
+                    // Draw series at bottom left with outline
+                    drawPokemonText(series, 20, H - 20, 16, 1, 'left');
+
+                    // Draw date at bottom right with outline
+                    drawPokemonText(date, W - 20, H - 20, 14, 1, 'right');
+
+                    // Draw attacks (ALWAYS draw attacks on top of everything)
+                    const attacks = (settings.attacks || []); // TODO  + SUITE
+
+                    if (attacks.length > 0) {
+                        let startY = H/2 + attackMarginValue;
+
+                        let yPos = startY;
+
+                        for (const attack of attacks) {
+                            if (attack.name || attack.description) {
+                                // Draw attack name (more to the right than description)
+                                drawPokemonText(attack.name, 50, yPos, 20, 1.5, 'left');
+
+                                // Draw attack description with wrapping (more to the left than title)
+                                if (attack.description) {
+                                    yPos = drawWrappedText(attack.description, 20, yPos + 25, W - 40, 16, 1) + 20;
+                                } else {
+                                    yPos += 50;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                /* main renderer */
+                function drawBackCard() {
+                    // read controls
+                    const title = (settings.title || '');
+                    const borderOp = (settings.backBorderOp || 1);
+                    const bWidth = (settings.backBWidth || 12);
+                    const fSize = (settings.fontSize || 62);
+                    const tOutline = (settings.titleOutline || 14);
+                    const tPos = (settings.titlePos || 195);
+                    const curv = (settings.curv || 50);
+                    const bgImage = settings.backBgImage;
+
+                    // clear
+                    ctx.clearRect(0,0,W,H);
+
+                    // Draw background with proper clipping to avoid corners but fill border area
+                    ctx.save();
+                    // Use the full card area including border for the image
+                    roundedRectPath(ctx, 0, 0, W, H, cornerRadius);
+                    ctx.clip();
+
+                    if (bgImage) {
+                        // Image covers entire card including border area
+                        const imgW = bgImage.width, imgH = bgImage.height;
+                        const scale = Math.max(W / imgW, H / imgH);
+                        const sw = W / scale, sh = H / scale;
+                        const sx = (imgW - sw) / 2, sy = (imgH - sh) / 2;
+                        ctx.drawImage(bgImage, sx, sy, sw, sh, 0, 0, W, H);
+                    } else {
+                        ctx.fillStyle = '#ddd';
+                        ctx.fillRect(0,0,W,H);
+                    }
+                    ctx.restore();
+
+                    // Draw border (with opacity)
+                    ctx.save();
+                    ctx.globalAlpha = borderOp;
+                    ctx.strokeStyle = '#151515';
+                    ctx.lineWidth = bWidth;
+                    const safeRadius = Math.max(cornerRadius - bWidth, 0);
+                    roundedRectPath(ctx, bWidth/2, bWidth/2, W - bWidth, H - bWidth, safeRadius);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Draw top and bottom text
+                    const baselineTop = centerY - tPos;
+                    const baselineBottom = centerY + tPos;
+
+                    if (curv <= 0) {
+                        drawStraightText(title, centerX, baselineTop, fSize, tOutline, false);
+                        drawStraightText(title, centerX, baselineBottom, fSize, tOutline, true);
+                    } else {
+                        const topOK = drawCurvedText(title, baselineTop, true, fSize, tOutline, curv);
+                        const botOK = drawCurvedText(title, baselineBottom, false, fSize, tOutline, curv);
+                        if (!topOK) drawStraightText(title, centerX, baselineTop, fSize, tOutline, false);
+                        if (!botOK) drawStraightText(title, centerX, baselineBottom, fSize, tOutline, true);
+                    }
+                }
+
+                return {
+                    setCardName: setCardName,
+                    setCardDate: setCardDate,
+                    setSeries: setSeries,
+                    setFrontBorderOp: setFrontBorderOp,
+                    setFrontBorderWidth: setFrontBorderWidth,
+                    setFullArt: setFullArt,
+                    setAttackMargin: setAttackMargin,
+                    setImagePosition: setImagePosition,
+                    setFrontBgImage: setFrontBgImage,
+                    setBottomBgImage: setBottomBgImage,
+
+                    setTitle: setTitle,
+                    setBackBorderOp: setBackBorderOp,
+                    setBackBWidth: setBackBWidth,
+                    setFontSize: setFontSize,
+                    setTitleOutline: setTitleOutline,
+                    setTitlePos: setTitlePos,
+                    setCurv: setCurv,
+                    setBackBgImage: setBackBgImage,
+
+                    setAttacks: setAttacks,
+
+                    drawFrontCard: drawFrontCard,
+                    drawBackCard: drawBackCard,
+                }
+            }
+        </script>
+    {% endblock %}
+</head>
+<body class="text-text-100 font-noto-sans bg-background-500 min-h-[100dvh] min-w-[100dvw] p-0 m-0 select-none">
+<div class="fixed top-4 right-4 space-y-3 z-50">
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div
+                x-data="{ show: true }"
+                x-init="setTimeout(() => show = false, 4000)"
+                x-show="show"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-2"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-300"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 translate-y-2"
+                class="px-4 py-3 rounded-lg shadow-lg text-sm flex items-start gap-2 w-80
+                        {% if label == 'success' %}
+                            bg-accent-green-900 border border-accent-green-800
+                        {% elseif label == 'error' %}
+                            bg-accent-red-900 border border-accent-red-800
+                        {% elseif label == 'warning' %}
+                            bg-accent-yellow-900 border border-accent-yellow-800
+                        {% else %}
+                            bg-accent-blue-900 border border-accent-blue-800
+                        {% endif %}
+                    " role="alert">
+
+                <span class="flex-1">{{ message|raw }}</span>
+
+                <button type="button" class="ml-2 text-gray-400 hover:text-gray-200"
+                        @click="show = false">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+</div>
+    <twig:Loader />
+    <twig:Header />
+    <main class="min-h-[100dvh] flex flex-col {% block main_class %}{% endblock %}">
+        {% block main %}
         {% endblock %}
-    </head>
-    <body>
-        {% block body %}{% endblock %}
-    </body>
+    </main>
+    <twig:Footer />
+</body>
 </html>

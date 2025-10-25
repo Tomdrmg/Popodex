@@ -1,0 +1,281 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Édition de Carte{% endblock %}
+
+{% block main_class %}items-center p-4 pt-[88px] justify-center{% endblock %}
+
+{% block main %}
+    <div class="container max-w-5xl px-4 py-8">
+        <div class="rounded-xl bg-foreground-500 mx-auto">
+            <div class="p-8 gap-4 flex flex-col md:flex-row">
+                <div class="w-full">
+                    {{ form_start(form, {'attr': {'class': 'space-y-6', 'id': form.vars.id}}) }}
+
+                    <div>
+                        {{ form_label(form.name) }}
+                        {{ form_widget(form.name, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.name) }}
+                    </div>
+
+                    <div>
+                        {{ form_label(form.date) }}
+                        {{ form_widget(form.date, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.date) }}
+                    </div>
+
+                    {# Sélecteur de série #}
+                    <div>
+                        {{ form_label(form.series) }}
+                        {{ form_widget(form.series, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.series) }}
+                    </div>
+
+                    {# Sélecteur de dos de carte avec images #}
+                    <div>
+                        <label class="block text-sm font-normal text-text-300 mb-2">Dos de carte</label>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="back-selector">
+                            {% for choice in form.back.vars.choices %}
+                                {% set back = choice.data %}
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="{{ form.back.vars.full_name }}" value="{{ back.id }}"
+                                           {% if form.back.vars.value and form.back.vars.value == back.id %}checked{% endif %}
+                                           class="hidden peer back-radio">
+                                    <div class="border-2 border-foreground-200 rounded-lg p-2 transition-all peer-checked:border-accent-purple-600 peer-checked:bg-accent-purple-50">
+                                        <img src="{{ path('app_back_render', {'id': back.id}) }}"
+                                             alt="{{ back.title }}"
+                                             class="w-full h-auto rounded">
+                                        <div class="text-center mt-2 text-sm text-text-300">{{ back.title }}</div>
+                                    </div>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        {# Champ select caché pour Symfony #}
+                        <div class="hidden">
+                            {{ form_widget(form.back) }}
+                        </div>
+                        {{ form_errors(form.back) }}
+                    </div>
+
+                    <twig:FileInput :compact="true" acceptedTypes="PNG, JPG, WEBP jusqu'à 5MB" formElement="{{ form.imageFile }}" existingImageUrl="{{ existingImageUrl }}"/>
+                    <twig:FileInput :compact="true" acceptedTypes="PNG, JPG, WEBP jusqu'à 5MB" formElement="{{ form.backgroundImageFile }}" existingImageUrl="{{ existingBackgroundImageUrl }}"/>
+
+                    <div class="flex gap-4 items-start">
+                        <div class="flex flex-col items-center">
+                            {{ form_label(form.fullArt) }}
+                            {{ form_widget(form.fullArt) }}
+                            {{ form_errors(form.fullArt) }}
+                        </div>
+                        <div class="flex-1" id="image-position-container">
+                            {{ form_label(form.imageVerticalPosition) }}
+                            {{ form_widget(form.imageVerticalPosition, {'attr': {'class': 'w-full'}}) }}
+                            {{ form_errors(form.imageVerticalPosition) }}
+                        </div>
+                    </div>
+
+                    <div>
+                        {{ form_label(form.borderOpacity) }}
+                        {{ form_widget(form.borderOpacity, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.borderOpacity) }}
+                    </div>
+
+                    <div>
+                        {{ form_label(form.borderWidth) }}
+                        {{ form_widget(form.borderWidth, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.borderWidth) }}
+                    </div>
+
+                    <div>
+                        {{ form_label(form.movesMarginTop) }}
+                        {{ form_widget(form.movesMarginTop, {'attr': {'class': 'w-full'}}) }}
+                        {{ form_errors(form.movesMarginTop) }}
+                    </div>
+
+                    {# Gestion des attaques #}
+                    <div>
+                        <twig:ListInput title="Attaque" :une="true" field="{{ form.moves }}"/>
+                    </div>
+
+                    {# Champ caché pour la preview #}
+                    {{ form_widget(form.previewImage) }}
+
+                    <button type="submit">
+                        {% if isNew %}
+                            Créer
+                        {% else %}
+                            Modifier
+                        {% endif %}
+                    </button>
+
+                    {% if not isNew %}
+                        <div class="mt-4">
+                            <a href="{{ path('app_card_delete', {'id': card.id}) }}" class="alert btn" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette carte ?')">
+                                Supprimer
+                            </a>
+                        </div>
+                    {% endif %}
+                    {{ form_end(form) }}
+                </div>
+
+                {# Preview du canvas #}
+                <div class="w-full max-w-[476px] mx-auto sticky top-4 self-start">
+                    <canvas id="cardCanvas" class="w-full h-auto block" width="476" height="665"></canvas>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const canvas = document.getElementById('cardCanvas');
+                            const drawer = cardDrawer(canvas);
+                            const form = document.getElementById('{{ form.vars.id }}');
+                            const previewInput = document.getElementById('{{ form.previewImage.vars.id }}');
+
+                            // Synchronisation des radios avec le select caché
+                            function syncBackSelection() {
+                                const backRadios = document.querySelectorAll('.back-radio');
+                                const backSelect = document.getElementById('{{ form.back.vars.id }}');
+
+                                backRadios.forEach(radio => {
+                                    radio.addEventListener('change', function() {
+                                        if (this.checked) {
+                                            backSelect.value = this.value;
+                                            update();
+                                        }
+                                    });
+                                });
+
+                                // Initialiser la sélection
+                                if (backSelect.value) {
+                                    const correspondingRadio = document.querySelector(`.back-radio[value="${backSelect.value}"]`);
+                                    if (correspondingRadio) {
+                                        correspondingRadio.checked = true;
+                                    }
+                                }
+                            }
+
+                            // Initialisation des valeurs
+                            function initializeDrawer() {
+                                drawer.setCardName(document.getElementById('{{ form.name.vars.id }}').value);
+
+                                const dateInput = document.getElementById('{{ form.date.vars.id }}');
+                                if (dateInput.value) {
+                                    const date = new Date(dateInput.value);
+                                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                                    drawer.setCardDate(formattedDate);
+                                } else {
+                                    drawer.setCardDate('');
+                                }
+
+                                const seriesSelect = document.getElementById('{{ form.series.vars.id }}');
+                                if (seriesSelect.value) {
+                                    const selectedOption = seriesSelect.options[seriesSelect.selectedIndex];
+                                    drawer.setSeries(selectedOption.textContent);
+                                } else {
+                                    drawer.setSeries('');
+                                }
+
+                                drawer.setFullArt(document.getElementById('{{ form.fullArt.vars.id }}').checked);
+                                drawer.setImagePosition(parseInt(document.getElementById('{{ form.imageVerticalPosition.vars.id }}').value, 10) / 100);
+                                drawer.setFrontBorderOp(parseInt(document.getElementById('{{ form.borderOpacity.vars.id }}').value, 10) / 100);
+                                drawer.setFrontBorderWidth(parseInt(document.getElementById('{{ form.borderWidth.vars.id }}').value, 10));
+                                drawer.setAttackMargin(parseInt(document.getElementById('{{ form.movesMarginTop.vars.id }}').value, 10));
+
+                                // Gestion des attaques
+                                const moves = [];
+                                document.querySelectorAll('.moves-item').forEach(item => {
+                                    const name = item.querySelector('input[id$="_title"]').value;
+                                    const description = item.querySelector('textarea[id$="_details"]').value;
+                                    if (name || description) {
+                                        moves.push({
+                                            name: name,
+                                            description: description });
+                                    }
+                                });
+                                drawer.setAttacks(moves);
+                            }
+
+                            function updatePreview() {
+                                previewInput.value = canvas.toDataURL('image/png');
+                            }
+
+                            function update() {
+                                initializeDrawer();
+                                drawer.drawFrontCard();
+                                setTimeout(updatePreview, 100);
+                            }
+
+                            function updateImage(url, type) {
+                                if (!url) {
+                                    if (type === "bottom") drawer.setBottomBgImage(null);
+                                    else drawer.setFrontBgImage(null);
+                                    drawer.drawFrontCard();
+                                    return;
+                                }
+
+                                const img = new Image();
+                                img.onload = () => {
+                                    if (type === "bottom") drawer.setBottomBgImage(img);
+                                    else drawer.setFrontBgImage(img);
+                                    drawer.drawFrontCard();
+                                    setTimeout(updatePreview, 100);
+                                };
+                                img.src = url;
+                            }
+
+                            // Écouteurs d'événements
+                            const inputs = [
+                                '{{ form.name.vars.id }}',
+                                '{{ form.date.vars.id }}',
+                                '{{ form.series.vars.id }}',
+                                '{{ form.fullArt.vars.id }}',
+                                '{{ form.imageVerticalPosition.vars.id }}',
+                                '{{ form.borderOpacity.vars.id }}',
+                                '{{ form.borderWidth.vars.id }}',
+                                '{{ form.movesMarginTop.vars.id }}'
+                            ];
+
+                            inputs.forEach(id => {
+                                const element = document.getElementById(id);
+                                if (element) {
+                                    element.addEventListener('input', update);
+                                }
+                            });
+
+                            // Écouteur pour les radios du dos de carte
+                            document.querySelectorAll('input[name="{{ form.back.vars.full_name }}"]').forEach(radio => {
+                                radio.addEventListener('change', update);
+                            });
+
+                            // Écouteur pour le fichier d'image
+                            document.getElementById('{{ form.backgroundImageFile.vars.id }}').addEventListener('change', (e) => {
+                                const f = e.target.files && e.target.files[0];
+                                updateImage(f ? URL.createObjectURL(f) : null, "bottom");
+                            });
+
+                            document.getElementById('{{ form.imageFile.vars.id }}').addEventListener('change', (e) => {
+                                const f = e.target.files && e.target.files[0];
+                                updateImage(f ? URL.createObjectURL(f) : null, "top");
+                            });
+
+                            // Écouteurs pour les attaques (délégation d'événements)
+                            document.getElementById('{{ form.moves.vars.id }}').addEventListener('input', function(e) {
+                                if (e.target.matches('input, textarea')) {
+                                    update();
+                                }
+                            });
+
+                            form.addEventListener('submit', updatePreview);
+
+                            // Initialisation
+                            update();
+                            syncBackSelection();
+
+                            // Charger l'image existante si disponible
+                            const existingPreview = document.querySelector('.file-preview-image[src]');
+                            if (existingPreview && existingPreview.src) {
+                                updateImage(existingPreview.src);
+                            }
+                        });
+                    </script>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

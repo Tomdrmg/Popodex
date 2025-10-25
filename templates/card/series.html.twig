@@ -1,0 +1,77 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Séries{% endblock %}
+
+{% block main_class %}items-center p-4 pt-[88px]{% endblock %}
+
+{% block main %}
+    <div class="container px-4 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">Liste des séries</h1>
+        </div>
+
+        {# Formulaire d'ajout/modification #}
+        <div class="bg-foreground-500 p-6 rounded-lg shadow mb-6">
+            <h3 class="text-lg font-semibold mb-4">
+                {% if editingSeries %}
+                    Modifier la série : {{ editingSeries.title }}
+                {% else %}
+                    Ajouter une nouvelle série
+                {% endif %}
+            </h3>
+
+            {{ form_start(form, {'attr': {'class': 'space-y-4'}}) }}
+            <div>
+                {{ form_label(form.title) }}
+                {{ form_widget(form.title) }}
+                {{ form_errors(form.title) }}
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit">
+                    {% if editingSeries %}
+                        Modifier
+                    {% else %}
+                        Créer
+                    {% endif %}
+                </button>
+
+                {% if editingSeries %}
+                    <a href="{{ path('app_series') }}" class="btn alert">
+                        Annuler
+                    </a>
+                {% endif %}
+            </div>
+            {{ form_end(form) }}
+        </div>
+
+        {# Liste des séries #}
+        <div class="overflow-x-auto bg-foreground-500 shadow rounded-lg">
+            <table class="min-w-full divide-y divide-foreground-300">
+                <thead class="bg-foreground-400">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-text-300 uppercase w-24">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-text-300 uppercase">Titre</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-text-300 uppercase w-36">Actions</th>
+                </tr>
+                </thead>
+                <tbody class="bg-foreground-500 divide-y divide-foreground-300">
+                {% for serie in series %}
+                    <tr class="hover:bg-foreground-400">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-text-100">{{ serie.id }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-text-100">{{ serie.title }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                            <a href="{{ path('app_series_edit', {'id': serie.id}) }}" class="text-accent-blue-400 hover:text-accent-blue-300">Modifier</a>
+                            <a href="{{ path('app_series_delete', {'id': serie.id}) }}" class="text-accent-red-400 hover:text-accent-red-300">Supprimer</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="3" class="px-6 py-4 text-center text-sm text-text-300">Aucune série trouvée.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
