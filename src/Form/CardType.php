@@ -55,7 +55,7 @@ class CardType extends AbstractType
                 ],
                 'constraints' => [
                     new Image([
-                        'maxSize' => '5M',
+                        'maxSize' => '10M',
                         'mimeTypes' => [
                             'image/jpeg',
                             'image/png',
@@ -74,7 +74,7 @@ class CardType extends AbstractType
                 ],
                 'constraints' => [
                     new Image([
-                        'maxSize' => '5M',
+                        'maxSize' => '10M',
                         'mimeTypes' => [
                             'image/jpeg',
                             'image/png',
