@@ -191,8 +191,8 @@ final class CardController extends AbstractController
             'card' => $card,
             'isNew' => $isNew,
             'backs' => $entityManager->getRepository(CardBack::class)->findAll(),
-            'existingBackgroundImageUrl' => $card->getBackgroundImage() ? $this->generateUrl('app_card_background', ['id' => $card->getId()]) : null,
-            'existingImageUrl' => $card->getImage() ? $this->generateUrl('app_card_image', ['id' => $card->getId()]) : null
+            'existingBackgroundImageUrl' => $card->getBackgroundImage() ? $this->generateUrl('app_card_background', ['id' => $card->getId()]).'?v='.$card->getLastRender() : null,
+            'existingImageUrl' => $card->getImage() ? $this->generateUrl('app_card_image', ['id' => $card->getId()]).'?v='.$card->getLastRender() : null
         ]);
     }
 
@@ -422,7 +422,7 @@ final class CardController extends AbstractController
             'form' => $form->createView(),
             'cardBack' => $cardBack,
             'isNew' => $isNew,
-            'existingImageUrl' => $cardBack->getBackgroundImage() ? $this->generateUrl('app_back_background', ['id' => $cardBack->getId()]) : null
+            'existingImageUrl' => $cardBack->getBackgroundImage() ? $this->generateUrl('app_back_background', ['id' => $cardBack->getId()]).'?v='.$cardBack->getLastRender() : null
         ]);
     }
 

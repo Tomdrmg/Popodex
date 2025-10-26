@@ -56,8 +56,8 @@
                         {{ form_errors(form.back) }}
                     </div>
 
-                    <twig:FileInput :compact="true" acceptedTypes="PNG, JPG, WEBP jusqu'à 5MB" formElement="{{ form.imageFile }}" existingImageUrl="{{ existingImageUrl }}"/>
-                    <twig:FileInput :compact="true" acceptedTypes="PNG, JPG, WEBP jusqu'à 5MB" formElement="{{ form.backgroundImageFile }}" existingImageUrl="{{ existingBackgroundImageUrl }}"/>
+                    <twig:FileInput :compact="true" acceptedTypes="PNG, JPG, WEBP jusqu'à 10MB" formElement="{{ form.imageFile }}" existingImageUrl="{{ existingImageUrl }}"/>
+                    <twig:FileInput :compact="true" acceptedTypes="PNG, JPG, WEBP jusqu'à 10MB" formElement="{{ form.backgroundImageFile }}" existingImageUrl="{{ existingBackgroundImageUrl }}"/>
 
                     <div class="flex gap-4 items-start">
                         <div class="flex flex-col items-center">

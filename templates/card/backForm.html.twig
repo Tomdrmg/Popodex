@@ -17,7 +17,7 @@
                         {{ form_errors(form.title) }}
                     </div>
 
-                    <twig:FileInput acceptedTypes="PNG, JPG, WEBP jusqu'à 5MB" formElement="{{ form.backgroundImageFile }}" existingImageUrl="{{ existingImageUrl }}"/>
+                    <twig:FileInput acceptedTypes="PNG, JPG, WEBP jusqu'à 10MB" formElement="{{ form.backgroundImageFile }}" existingImageUrl="{{ existingImageUrl }}"/>
                     {# Champ caché pour la preview #}
                     {{ form_widget(form.previewImage) }}
 
