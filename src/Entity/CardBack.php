@@ -52,6 +52,9 @@ class CardBack
     #[ORM\Column(length: 255)]
     private ?string $renderedImage = null;
 
+    #[ORM\Column]
+    private ?int $lastRender = 0;
+
     public function __construct()
     {
         $this->cards = new ArrayCollection();
@@ -208,6 +211,18 @@ class CardBack
     public function setRenderedImage(string $renderedImage): static
     {
         $this->renderedImage = $renderedImage;
+
+        return $this;
+    }
+
+    public function getLastRender(): ?int
+    {
+        return $this->lastRender;
+    }
+
+    public function setLastRender(int $lastRender): static
+    {
+        $this->lastRender = $lastRender;
 
         return $this;
     }

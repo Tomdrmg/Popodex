@@ -22,7 +22,7 @@
             {# Cartes existantes #}
             {% for back in backs %}
                 <a href="{{ path('app_back_edit', {'id': back.id}) }}" class="w-full max-w-xs transform transition-transform duration-200 hover:scale-105 hover:shadow-lg">
-                    <img src="{{ path('app_back_render', {'id': back.id}) }}" alt="Dos de carte {{ back.title }}" class="w-full h-auto object-cover cursor-pointer" loading="lazy"/>
+                    <img src="{{ path('app_back_render', {'id': back.id}) }}?v={{ back.lastRender }}" alt="Dos de carte {{ back.title }}" class="w-full h-auto object-cover cursor-pointer" loading="lazy"/>
                 </a>
             {% endfor %}
         </div>

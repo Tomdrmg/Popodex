@@ -6,31 +6,237 @@
 
 {% block main %}
     <div class="container px-4 py-8 flex flex-col mx-auto max-w-5xl gap-5">
+        <!-- Barre d'outils d'export -->
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+            <h1 class="text-2xl font-bold text-text-100 text-center sm:text-left">Mes cartes</h1>
+            <div class="flex flex-col sm:flex-row items-center gap-3" id="export-controls">
+                <button id="toggle-export-mode"
+                        class="bg-accent-purple-600 hover:bg-accent-purple-700 text-text-100 px-4 py-2 rounded-lg transition-colors duration-300 font-noto-sans font-medium w-full sm:w-auto">
+                    📤 Exporter
+                </button>
+                <div id="export-selection" class="hidden flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    <span id="selected-count" class="text-sm text-text-300 font-noto-sans text-center sm:text-left">0 carte(s) sélectionnée(s)</span>
+                    <div class="flex flex-row gap-2 w-full sm:w-auto justify-center sm:justify-start">
+                        <button id="confirm-selection"
+                                class="bg-accent-green-600 hover:bg-accent-green-700 text-text-100 px-4 py-2 rounded-lg transition-colors duration-300 font-noto-sans font-medium flex-1 sm:flex-none">
+                            ✅ Valider
+                        </button>
+                        <button id="cancel-selection"
+                                class="bg-foreground-400 hover:bg-foreground-500 text-text-300 px-4 py-2 rounded-lg transition-colors duration-300 font-noto-sans font-medium flex-1 sm:flex-none">
+                            ❌ Annuler
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {% for series in allSeries %}
             <div class="w-full flex flex-row px-3 items-center gap-3">
-                <hr class="text-text-100 grow"/>
-                <span class="uppercase font-bold text-xs">{{ series.title }}</span>
-                <hr class="text-text-100 grow"/>
+                <hr class="text-text-100 grow opacity-20"/>
+                <span class="uppercase font-bold text-xs text-text-200 font-noto-sans">{{ series.title }}</span>
+                <hr class="text-text-100 grow opacity-20"/>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
                 {% for card in series.cards|sort((a, b) => b.date <=> a.date) %}
-                    <div class="w-full max-w-xs group">
-                        <a href="{{ path('app_card_edit', {'id': card.id}) }}" class="block relative rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
-                            <img src="{{ path('app_card_render', {'id': card.id}) }}"
-                                 alt="Carte {{ card.name }}"
-                                 class="w-full h-auto object-cover"/>
+                    <div class="w-full max-w-xs group card-container" data-card-id="{{ card.id }}">
+                        <div class="relative rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 export-mode bg-background-300">
+                            <!-- Overlay de sélection -->
+                            <div class="selection-overlay absolute inset-0 bg-accent-blue-500 bg-opacity-20 border-2 border-transparent rounded-lg hidden z-10 transition-all duration-300"></div>
 
-                            {% if card.back %}
-                                <div class="absolute bottom-1 right-1 w-12 h-16 bg-white border border-gray-300 rounded shadow-md transform translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400">
-                                    <img src="{{ path('app_back_render', {'id': card.back.id}) }}"
-                                         alt="Dos"
-                                         class="w-full h-full object-cover rounded-sm"/>
-                                </div>
-                            {% endif %}
-                        </a>
+                            <!-- Checkbox de sélection -->
+                            <div class="selection-checkbox absolute top-2 left-2 w-6 h-6 bg-background-100 border-2 border-foreground-300 rounded-full hidden z-20 flex items-center justify-center transition-all duration-300">
+                                <svg class="w-4 h-4 text-accent-blue-500 hidden" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+
+                            <!-- Lien normal (désactivé en mode export) -->
+                            <a href="{{ path('app_card_edit', {'id': card.id}) }}"
+                               class="card-link block relative">
+                                <img src="{{ path('app_card_render', {'id': card.id}) }}"
+                                     alt="Carte {{ card.name }}"
+                                     class="w-full h-auto object-cover"/>
+
+                                {% if card.back %}
+                                    <div class="absolute bottom-1 right-1 w-12 h-16 bg-background-100 border border-foreground-300 rounded shadow-md transform translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400">
+                                        <img src="{{ path('app_back_render', {'id': card.back.id}) }}"
+                                             alt="Dos"
+                                             class="w-full h-full object-cover rounded-sm"/>
+                                    </div>
+                                {% endif %}
+                            </a>
+                        </div>
                     </div>
                 {% endfor %}
             </div>
         {% endfor %}
     </div>
+
+    <style>
+        .card-selected .selection-overlay {
+            display: block !important;
+            border-color: var(--color-accent-blue-500) !important;
+            background-color: rgba(59, 130, 246, 0.3) !important;
+        }
+        .card-selected .selection-checkbox {
+            display: flex !important;
+            border-color: var(--color-accent-blue-500) !important;
+            background-color: var(--color-background-100);
+        }
+        .card-selected .selection-checkbox svg {
+            display: block !important;
+        }
+        .export-mode-active .card-link {
+            pointer-events: none;
+        }
+        .export-mode-active .card-container {
+            cursor: pointer;
+        }
+        .export-mode-active .card-container:hover .selection-overlay {
+            display: block !important;
+            border-color: var(--color-accent-blue-300) !important;
+            background-color: rgba(147, 197, 253, 0.2) !important;
+        }
+
+        /* Animation de sélection */
+        .card-container {
+            transition: all 0.3s ease;
+        }
+
+        .card-selected {
+            transform: scale(0.98);
+        }
+
+        .export-mode-active .card-container:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Cacher le bouton export en mode export */
+        .export-mode-active #toggle-export-mode {
+            display: none !important;
+        }
+
+        /* Responsive amélioré */
+        @media (max-width: 640px) {
+            #export-selection {
+                width: 100%;
+            }
+
+            #export-selection .flex-row {
+                width: 100%;
+            }
+
+            #confirm-selection,
+            #cancel-selection {
+                min-width: 120px;
+            }
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleExportBtn = document.getElementById('toggle-export-mode');
+            const exportSelection = document.getElementById('export-selection');
+            const selectedCount = document.getElementById('selected-count');
+            const confirmSelectionBtn = document.getElementById('confirm-selection');
+            const cancelSelectionBtn = document.getElementById('cancel-selection');
+            const cardContainers = document.querySelectorAll('.card-container');
+
+            let exportMode = false;
+            let selectedCards = new Set();
+
+            // Basculer le mode export
+            toggleExportBtn.addEventListener('click', function() {
+                exportMode = !exportMode;
+
+                if (exportMode) {
+                    // Activer le mode export
+                    document.body.classList.add('export-mode-active');
+                    exportSelection.classList.remove('hidden');
+                    toggleExportBtn.classList.add('hidden');
+                } else {
+                    // Désactiver le mode export
+                    exitExportMode();
+                }
+
+                updateSelectionCount();
+            });
+
+            // Gérer la sélection des cartes
+            cardContainers.forEach(container => {
+                container.addEventListener('click', function(e) {
+                    if (!exportMode) return;
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const cardId = this.dataset.cardId;
+
+                    if (selectedCards.has(cardId)) {
+                        // Désélectionner
+                        selectedCards.delete(cardId);
+                        this.classList.remove('card-selected');
+                    } else {
+                        // Sélectionner
+                        selectedCards.add(cardId);
+                        this.classList.add('card-selected');
+                    }
+
+                    updateSelectionCount();
+                });
+            });
+
+            // Valider la sélection
+            confirmSelectionBtn.addEventListener('click', function() {
+                if (selectedCards.size === 0) {
+                    alert('Veuillez sélectionner au moins une carte');
+                    return;
+                }
+
+                const ids = Array.from(selectedCards).join(',');
+                window.location.href = "{{ path('app_export', {'ids': '0,0,0'}) }}".replace('0,0,0', ids);
+            });
+
+            // Annuler la sélection
+            cancelSelectionBtn.addEventListener('click', exitExportMode);
+
+            function updateSelectionCount() {
+                selectedCount.textContent = `${selectedCards.size} carte(s) sélectionnée(s)`;
+                confirmSelectionBtn.disabled = selectedCards.size === 0;
+
+                // Style du bouton de validation selon le nombre de sélections
+                if (selectedCards.size === 0) {
+                    confirmSelectionBtn.classList.remove('bg-accent-green-600', 'hover:bg-accent-green-700');
+                    confirmSelectionBtn.classList.add('bg-foreground-400', 'hover:bg-foreground-500');
+                } else {
+                    confirmSelectionBtn.classList.remove('bg-foreground-400', 'hover:bg-foreground-500');
+                    confirmSelectionBtn.classList.add('bg-accent-green-600', 'hover:bg-accent-green-700');
+                }
+            }
+
+            function exitExportMode() {
+                exportMode = false;
+                document.body.classList.remove('export-mode-active');
+                exportSelection.classList.add('hidden');
+                toggleExportBtn.classList.remove('hidden');
+
+                // Réinitialiser la sélection
+                selectedCards.clear();
+                cardContainers.forEach(container => {
+                    container.classList.remove('card-selected');
+                });
+
+                updateSelectionCount();
+            }
+
+            // Empêcher le lien de fonctionner en mode export
+            document.querySelectorAll('.card-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    if (exportMode) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
 {% endblock %}
